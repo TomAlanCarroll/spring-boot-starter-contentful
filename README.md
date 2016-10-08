@@ -1,6 +1,7 @@
 # Spring Boot Starter Contentful
 
 This is a starter project for two use cases:
+
 1. You want to create a lightweight Spring Boot webapp that is backed by Contentful's CMS API
 2. You already have a Spring webapp and would like to incorporate Contentful's CMS API
 
