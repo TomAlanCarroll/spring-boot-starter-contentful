@@ -17,6 +17,7 @@
     "tests"
   ],
   "dependencies": {
-    "angular-translate": "^2.12.1"
+    "angular-translate": "^2.12.1",
+    "angular-translate-loader-url": "^2.12.1"
   }
 }
