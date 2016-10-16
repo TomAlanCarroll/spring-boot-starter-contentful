@@ -43,9 +43,11 @@ public class ContentfulInitializerService {
     public boolean contentTypeIsSetup() {
         try {
             CMAArray<CMAContentType> result = contentfulManagementClient.contentTypes().fetchAll(contentfulSpaceId);
+            logger.info("Fetched all content types, size is: " + ((result != null) ? result.getItems().size() : "0"));
 
             for (CMAContentType contentType : result.getItems()) {
                 if (TRANSLATION_CONTENT_TYPE_NAME.getValue().equals(contentType.getName())) {
+                    logger.info("Found Translation type on Contentful");
                     return true;
                 }
             }
