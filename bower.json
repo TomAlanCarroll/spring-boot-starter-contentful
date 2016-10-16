@@ -1,0 +1,22 @@
+{
+  "name": "spring-boot-starter-contentful",
+  "homepage": "https://github.com/TomAlanCarroll/spring-boot-starter-contentful",
+  "authors": [
+    "Tom Carroll <tomalancarroll@gmail.com>"
+  ],
+  "description": "",
+  "main": "",
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "src/main/resources/static",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "angular-translate": "^2.12.1"
+  }
+}
