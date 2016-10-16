@@ -72,19 +72,21 @@ public class ContentfulInitializerService {
                                 logger.info("Successfully created Translation content type");
 
                                 // Content Type starts as draft, we must publish
-                                publishContentType();
+                                publishContentType(result);
                             }
                         });
     }
 
-    public void publishContentType() {
-        CMAContentType translationType = contentfulManagementClient
-                .contentTypes()
-                .fetchOne(contentfulSpaceId, TRANSLATION_CONTENT_TYPE_NAME.getValue());
+    public void publishContentType(CMAContentType toPublish) {
+        logger.info("Starting publishing of Translation content type");
 
         contentfulManagementClient.contentTypes()
-                .publish(translationType);
-        logger.info("Successfully published Translation content type");
-
+                .async()
+                .publish(toPublish, new CMACallback<CMAContentType>() {
+                    @Override
+                    protected void onSuccess(CMAContentType result) {
+                        logger.info("Successfully published Translation content type");
+                    }
+                });
     }
 }
