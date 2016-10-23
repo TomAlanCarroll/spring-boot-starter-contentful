@@ -24,7 +24,7 @@ public class ContentfulConfig {
     @Value("${contentful.management.token}")
     private String contentfulManagementToken;
 
-    @Bean
+    @Bean("contentfulDeliveryClient")
     public CDAClient contentfulDeliveryClient() {
         logger.info("Contentful Delivery Client is being configured");
         return CDAClient.builder()
@@ -33,12 +33,12 @@ public class ContentfulConfig {
                 .build();
     }
 
-    @Bean
+    @Bean("contentfulPreviewClient")
     public CDAClient contentfulPreviewClient() {
         logger.info("Contentful Preview Client is being configured");
         return CDAClient.builder()
                 .setSpace(contentfulSpaceId)
-                .setToken(contentfulDeliveryApiKey)
+                .setToken(contentfulPreviewApiKey)
                 .build();
     }
 

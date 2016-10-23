@@ -10,7 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import static com.contentful.java.cma.Constants.CMAFieldType.*;
+import static com.contentful.java.cma.Constants.CMAFieldType.Object;
+import static com.contentful.java.cma.Constants.CMAFieldType.Symbol;
 import static com.tomalancarroll.service.ContentfulConstants.*;
 
 @Service
