@@ -10,8 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import static com.contentful.java.cma.Constants.CMAFieldType.Object;
-import static com.tomalancarroll.service.ContentfulConstants.TRANSLATION_CONTENT_TYPE_NAME;
+import static com.contentful.java.cma.Constants.CMAFieldType.*;
+import static com.tomalancarroll.service.ContentfulConstants.*;
 
 @Service
 public class ContentfulInitializerService {
@@ -60,12 +60,17 @@ public class ContentfulInitializerService {
     public void setupContentType() {
         CMAContentType result = contentfulManagementClient.contentTypes()
                 .create(contentfulSpaceId, new CMAContentType().setName("Translation")
-                                .addField(new CMAField()
-                                        .setId("dictionary")
-                                        .setName("Dictionary")
-                                        .setType(Object)
-                                        .setLocalized(true)
-                                        .setRequired(true)));
+                        .addField(new CMAField()
+                                .setId(SUBJECT_FIELD_ID.getValue())
+                                .setName(SUBJECT_FIELD_NAME.getValue())
+                                .setType(Symbol)
+                                .setRequired(true))
+                        .addField(new CMAField()
+                                .setId(DICTIONARY_FIELD_ID.getValue())
+                                .setName(DICTIONARY_FIELD_NAME.getValue())
+                                .setType(Object)
+                                .setLocalized(true)
+                                .setRequired(true)));
 
         logger.info("Successfully created Translation content type");
 
