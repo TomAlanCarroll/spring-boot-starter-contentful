@@ -1,6 +1,5 @@
 package com.tomalancarroll.service;
 
-import com.contentful.java.cma.CMACallback;
 import com.contentful.java.cma.CMAClient;
 import com.contentful.java.cma.model.CMAArray;
 import com.contentful.java.cma.model.CMAContentType;
@@ -59,36 +58,26 @@ public class ContentfulInitializerService {
     }
 
     public void setupContentType() {
-        contentfulManagementClient.contentTypes()
-                .async()
-                .create(contentfulSpaceId,
-                        new CMAContentType().setName("Translation")
+        CMAContentType result = contentfulManagementClient.contentTypes()
+                .create(contentfulSpaceId, new CMAContentType().setName("Translation")
                                 .addField(new CMAField()
                                         .setId("dictionary")
                                         .setName("Dictionary")
                                         .setType(Object)
-                                        .setRequired(true)),
-                        new CMACallback<CMAContentType>() {
-                            @Override
-                            protected void onSuccess(CMAContentType result) {
-                                logger.info("Successfully created Translation content type");
+                                        .setLocalized(true)
+                                        .setRequired(true)));
 
-                                // Content Type starts as draft, we must publish
-                                publishContentType(result);
-                            }
-                        });
+        logger.info("Successfully created Translation content type");
+
+        // Content Type starts as draft, we must publish
+        publishContentType(result);
     }
 
     public void publishContentType(CMAContentType toPublish) {
         logger.info("Starting publishing of Translation content type");
 
-        contentfulManagementClient.contentTypes()
-                .async()
-                .publish(toPublish, new CMACallback<CMAContentType>() {
-                    @Override
-                    protected void onSuccess(CMAContentType result) {
-                        logger.info("Successfully published Translation content type");
-                    }
-                });
+        contentfulManagementClient.contentTypes().publish(toPublish);
+
+        logger.info("Successfully published Translation content type");
     }
 }
