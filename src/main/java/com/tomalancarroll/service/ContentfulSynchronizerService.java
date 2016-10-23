@@ -1,11 +1,12 @@
 package com.tomalancarroll.service;
 
-import com.contentful.java.cda.CDAContentType;
 import com.contentful.java.cma.CMAClient;
 import com.contentful.java.cma.model.CMAArray;
 import com.contentful.java.cma.model.CMAContentType;
 import com.contentful.java.cma.model.CMAEntry;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.google.gson.internal.LinkedTreeMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +15,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -36,8 +39,9 @@ public class ContentfulSynchronizerService {
     public void synchronize() {
         try {
             String translationContentTypeSysId = getTranslationContentTypeSysId();
-            if (getTranslationsThatNeedSynchronization(translationContentTypeSysId).size() > 0) {
-                synchronizeTranslations(translationContentTypeSysId);
+            List<Resource> toSynchronize = getTranslationsThatNeedSynchronization(translationContentTypeSysId);
+            if (toSynchronize.size() > 0) {
+                synchronizeTranslations(toSynchronize, translationContentTypeSysId);
             } else {
                 logger.info("Translation content already synchronized; skipping synchronization");
             }
@@ -50,26 +54,32 @@ public class ContentfulSynchronizerService {
         }
     }
 
-    public List<Resource> getTranslationsThatNeedSynchronization(String translationContentTypeSysId) {
+    private List<Resource> getTranslationsThatNeedSynchronization(String translationContentTypeSysId) {
         try {
             Resource[] resources = dictionaryResolverService.resolveDictionaries();
-            List<Resource> toReturn = Arrays.asList(resources);
+            List<Resource> toReturn = new ArrayList<>();
             CMAArray<CMAEntry> result = contentfulManagementClient.entries().fetchAll(contentfulSpaceId);
             logger.info("Fetched all content entries, size is: " + ((result != null) ? result.getItems().size() : "0"));
 
-            for (CMAEntry entry : result.getItems()) {
-                Object field = entry.getFields().get(DICTIONARY_FIELD_NAME.getValue());
-                String entryContentTypeId = (String)((LinkedTreeMap)((LinkedTreeMap)entry.getSys().get("contentType")).get("sys")).get("id");
+            for (Resource resource : resources) {
+                boolean add = true;
+                String languageTag = getResourceLocale(resource).toLanguageTag();
 
-                logger.info("got translation with " + ((field != null) ? field.getClass() : "null"));
+                for (CMAEntry entry : result.getItems()) {
+                    String entrySubject = (String) entry.getFields().get("subject").get(languageTag);
+                    String entryContentTypeId = (String) ((LinkedTreeMap) ((LinkedTreeMap) entry.getSys().get("contentType")).get("sys")).get("id");
 
-                for (Resource resource : resources) {
-                    String subject = (String)entry.getFields().get("subject").get("value");
+                    // If contentType is equivalent and subject is equivalent then we don't need to synchronize this resource
                     if (translationContentTypeSysId.equals(entryContentTypeId) &&
-                            resource.getFilename().replace(".json", "").equals(subject)) {
-                        logger.info("Found Translation content on Contentful: " + resource.getFilename());
-                        toReturn.remove(resource);
+                            getResourceSubject(resource).equals(entrySubject)) {
+                        add = false;
+                        logger.info("Skipping synchronization for found Translation content on Contentful: " + resource.getFilename());
                     }
+                }
+
+                if (add) {
+                    toReturn.add(resource);
+                    logger.info("Synchronization required for missing Translation content on Contentful: " + resource.getFilename());
                 }
             }
 
@@ -79,24 +89,56 @@ public class ContentfulSynchronizerService {
         }
     }
 
-    public void synchronizeTranslations(String translationContentTypeSysId) {
-        logger.info("Starting creation of Translation content");
-        JsonObject jsonObject = new JsonObject();
-        jsonObject.addProperty("foo", "bar");
-
-        CMAEntry toCreate = new CMAEntry()
-                .setField(DICTIONARY_FIELD_ID.getValue(), jsonObject, Locale.US.toLanguageTag())
-                .setField(SUBJECT_FIELD_ID.getValue(), "global", Locale.US.toLanguageTag());
-
-        CMAEntry result = contentfulManagementClient.entries()
-                .create(contentfulSpaceId, translationContentTypeSysId, toCreate);
-
-        logger.info("Successfully created Translation content");
-
-        publishContent(result);
+    private Locale getResourceLocale(Resource resource) {
+        try {
+            return Locale.forLanguageTag(resource.getFile().getParentFile().getName());
+        } catch (IOException e) {
+            logger.error("Unable to obtain locale for resource " + resource.getFilename(), e);
+            return Locale.US;
+        }
     }
 
-    public void publishContent(CMAEntry toPublish) {
+    private String getResourceSubject(Resource resource) {
+        return resource.getFilename().replace(".json", "");
+    }
+
+    // TODO: Support updates of JSON files; only new files will be synchronized
+    private void synchronizeTranslations(List<Resource> toSynchronize, String translationContentTypeSysId) {
+        logger.info("Starting creation of Translation content");
+
+        for (Resource resource : toSynchronize) {
+            JsonObject jsonObject = loadJson(resource);
+            String languageTag = getResourceLocale(resource).toLanguageTag();
+
+            CMAEntry toCreate = new CMAEntry()
+                    .setField(DICTIONARY_FIELD_ID.getValue(), jsonObject, languageTag)
+                    .setField(SUBJECT_FIELD_ID.getValue(), getResourceSubject(resource), languageTag);
+
+            CMAEntry result = contentfulManagementClient.entries()
+                    .create(contentfulSpaceId, translationContentTypeSysId, toCreate);
+
+            logger.info("Successfully created Translation content: " + resource.getFilename());
+
+            publishContent(result);
+        }
+
+    }
+
+    private JsonObject loadJson(Resource resource) {
+        try {
+            JsonParser jsonParser = new JsonParser();
+            JsonElement jsonElement = jsonParser.parse(new InputStreamReader(resource.getInputStream()));
+            return jsonElement.getAsJsonObject();
+        } catch (IOException e) {
+            logger.error("Unable to load resource " + resource.getFilename(), e);
+            throw new IllegalStateException("Unable to load resource " + resource.getFilename());
+        } catch (IllegalArgumentException e) {
+            logger.error("Non JSON Object encountered in resource file " + resource.getFilename(), e);
+            throw e;
+        }
+    }
+
+    private void publishContent(CMAEntry toPublish) {
         logger.info("Starting publishing of Translation content");
 
         contentfulManagementClient.entries().publish(toPublish);
