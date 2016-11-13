@@ -71,7 +71,8 @@ public class ContentfulInitializerService {
                                 .setName(DICTIONARY_FIELD_NAME.getValue())
                                 .setType(Object)
                                 .setLocalized(true)
-                                .setRequired(true)));
+                                .setRequired(true)))
+                        .setDisplayField(SUBJECT_FIELD_ID.getValue());
 
         logger.info("Successfully created Translation content type");
 
