@@ -2,7 +2,6 @@ package com.tomalancarroll.service;
 
 import com.contentful.java.cma.CMAClient;
 import com.contentful.java.cma.model.CMAArray;
-import com.contentful.java.cma.model.CMAContentType;
 import com.contentful.java.cma.model.CMAEntry;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -21,7 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-import static com.tomalancarroll.service.ContentfulConstants.*;
+import static com.tomalancarroll.service.ContentfulConstants.DICTIONARY_FIELD_ID;
+import static com.tomalancarroll.service.ContentfulConstants.SUBJECT_FIELD_ID;
 
 @Service
 public class ContentfulSynchronizerService {
@@ -36,9 +36,12 @@ public class ContentfulSynchronizerService {
     @Autowired
     private DictionaryResolverService dictionaryResolverService;
 
+    @Autowired
+    private ContentfulTypeIdResolver contentfulTypeIdResolver;
+
     public void synchronize() {
         try {
-            String translationContentTypeSysId = getTranslationContentTypeSysId();
+            String translationContentTypeSysId = contentfulTypeIdResolver.getTranslationContentTypeId();
             List<Resource> toSynchronize = getTranslationsThatNeedSynchronization(translationContentTypeSysId);
             if (toSynchronize.size() > 0) {
                 synchronizeTranslations(toSynchronize, translationContentTypeSysId);
@@ -67,9 +70,11 @@ public class ContentfulSynchronizerService {
 
                 for (CMAEntry entry : result.getItems()) {
                     String entrySubject = (String) entry.getFields().get("subject").get(languageTag);
-                    String entryContentTypeId = (String) ((LinkedTreeMap) ((LinkedTreeMap) entry.getSys().get("contentType")).get("sys")).get("id");
+                    LinkedTreeMap treeMap = ((LinkedTreeMap) entry.getSys().get("contentType"));
+                    String entryContentTypeId = (String) ((LinkedTreeMap) treeMap.get("sys")).get("id");
 
-                    // If contentType is equivalent and subject is equivalent then we don't need to synchronize this resource
+                    // If contentType is equivalent and subject is equivalent
+                    // then we don't need to synchronize this resource
                     if (translationContentTypeSysId.equals(entryContentTypeId) &&
                             getResourceSubject(resource).equals(entrySubject)) {
                         add = false;
@@ -144,26 +149,5 @@ public class ContentfulSynchronizerService {
         contentfulManagementClient.entries().publish(toPublish);
 
         logger.info("Successfully published Translation content");
-    }
-
-    private String getTranslationContentTypeSysId() {
-        try {
-            // Wait 3 seconds; There were race condition issues with Contentful when fetching immediately
-            Thread.sleep(3000);
-
-            CMAArray<CMAContentType> result = contentfulManagementClient.contentTypes().fetchAll(contentfulSpaceId);
-            logger.info("Fetched all content types, size is: " + ((result != null) ? result.getItems().size() : "0"));
-
-            for (CMAContentType contentType : result.getItems()) {
-                if (TRANSLATION_CONTENT_TYPE_NAME.getValue().equals(contentType.getName())) {
-                    logger.info("Found Translation type on Contentful for content sychronization");
-                    return contentType.getResourceId();
-                }
-            }
-        } catch (Exception e) {
-            throw new SecurityException(e);
-        }
-
-        throw new IllegalStateException("Unable to retrieve Translation content type sys.id");
     }
 }

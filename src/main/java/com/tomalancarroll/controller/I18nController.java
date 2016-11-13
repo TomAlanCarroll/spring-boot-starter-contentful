@@ -18,7 +18,7 @@ public class I18nController {
                                      @RequestParam(value = "lang") String languageTag) {
         Locale locale = Locale.forLanguageTag(languageTag);
 
-        return contentfulService.getTranslation(subject, locale);
+        return contentfulService.getTranslation(locale, subject);
     }
 
 }
